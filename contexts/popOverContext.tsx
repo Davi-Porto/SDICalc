@@ -64,9 +64,11 @@ export function PopoverProvider({ children }: { children: ReactNode }) {
     };
 
     document.addEventListener("click", handleClickOutside, true);
+    window.addEventListener("resize", closePopover, true);
 
     return () => {
       document.removeEventListener("click", handleClickOutside, true);
+      window.removeEventListener("resize", closePopover, true);
     };
   }, [anchor, isOpen]);
 

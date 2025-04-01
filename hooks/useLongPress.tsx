@@ -4,22 +4,30 @@ export function useLongPress(
   callback: (e: React.TouchEvent | React.MouseEvent) => void,
   delay = 100
 ) {
-  const intervalRef = useRef<number | undefined>(undefined);
+  const intervalRef = useRef<number | null>(null);
+  const isTouchRef = useRef(false);
 
   const start = (e: React.TouchEvent | React.MouseEvent) => {
-    callback(e); // Executa imediatamente
-    intervalRef.current = window.setInterval(() => callback(e), delay); // Executa repetidamente
+    if (e.type === "touchstart") isTouchRef.current = true;
+    else if (e.type === "mousedown" && isTouchRef.current) {
+      isTouchRef.current = false;
+      return;
+    }
+
+    callback(e);
+    intervalRef.current = window.setInterval(() => callback(e), delay);
   };
 
   const stop = () => {
-    clearInterval(intervalRef.current);
+    clearInterval(intervalRef.current!);
+    intervalRef.current = null;
   };
 
   return {
     onMouseDown: start,
-    onMouseUp: stop,
-    onMouseLeave: stop,
     onTouchStart: start,
+    onMouseUp: stop,
     onTouchEnd: stop,
+    onMouseLeave: stop,
   };
 }

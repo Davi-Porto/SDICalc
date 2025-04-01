@@ -23,7 +23,9 @@
 }
 
 @theme {
+  --breakpoint-xs: 530px;
   --animate-blink: blink 1200ms linear infinite;
+  --animate-fadeIn: fadeIn 1s forwards;
 
   @keyframes blink {
     25% {
@@ -31,6 +33,15 @@
     }
     50% {
       transform: scaleY(1);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 }

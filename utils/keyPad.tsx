@@ -12,7 +12,7 @@ export type keyType = {
   className: string;
   dropDown?: boolean;
   function?: "<" | ">" | "-" | "--";
-} | null;
+};
 
 export type keyPadType = keyType[][];
 
@@ -97,7 +97,7 @@ const funcs: keyType[] = [
     function: "--",
     value: "",
     children: <Trash className="w-4" />,
-    className: "!bg-red-900 w-24.5",
+    className: "!bg-red-400/50 flex-2",
   },
   {
     function: "<",
@@ -147,7 +147,7 @@ export const keyPad = [
     {
       value: "0||",
       children: "0",
-      className: "bg-zinc-700 w-24.5",
+      className: "bg-zinc-700 flex-2",
     },
     Key(".||", "."),
     Key("+||", "+"),

@@ -16,18 +16,10 @@ export default function Keyboard() {
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
-      <div className="flex flex-col gap-0.5">
+      <div className="fixed bottom-0 xs:relative xs:w-80 flex flex-col gap-0.5 w-full aspect-square overflow-hidden">
         {keyPad.map((k, i) => (
-          <div key={i} className="flex flex-nowrap gap-0.5">
+          <div key={i} className="flex flex-nowrap gap-0.5 h-full">
             {k.map((v, j) => {
-              if (v == null) {
-                return (
-                  <div
-                    key={`${i}-${j}`}
-                    className="w-12 h-12 text-2xl bg-transparent select-none"
-                  ></div>
-                );
-              }
               if (v.keys) {
                 return (
                   <Key
@@ -45,7 +37,7 @@ export default function Keyboard() {
                                 <Key
                                   key={`${i}-${j}-${i2}`}
                                   value={k2.value}
-                                  className={k2.className}
+                                  className={`${k2.className} !w-[calc(100vw/5_-4px)] aspect-square xs:!w-[calc(theme(space.80)/5_-4px)]`}
                                   onClick={() => {
                                     closePopover();
                                   }}

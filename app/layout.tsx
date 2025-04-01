@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Fira_Mono } from "next/font/google";
 import { CalcProvider, PopoverProvider } from "@/contexts";
 import "./globals.css";
+import { TooltipProvider } from "@/contexts/tooltipContext";
 
 export const metadata: Metadata = {
-  title: "Calculadora de Polinômios",
-  description: "Calculadora de Polinômios",
+  title: "SDI Calc",
+  description: "Calculadora para SDI",
 };
 
 const fira = Fira_Mono({ subsets: ["latin"], weight: "400" });
@@ -17,9 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={fira.className}>
-      <body className="h-screen w-screen bg-stone-800 flex flex-col items-center text-stone-100">
+      <body className="h-[100dvh] w-screen bg-stone-800 flex flex-col items-center text-stone-100">
         <CalcProvider>
-          <PopoverProvider>{children}</PopoverProvider>
+          <TooltipProvider>
+            <PopoverProvider>{children}</PopoverProvider>
+          </TooltipProvider>
         </CalcProvider>
       </body>
     </html>

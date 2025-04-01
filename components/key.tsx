@@ -39,7 +39,7 @@ export default function Key(props: keyProps) {
   return (
     <div
       {...events}
-      className={`rounded size-12 text-2xl bg-stone-600 flex items-center justify-center cursor-pointer hover:brightness-125 transition-all duration-100 active:brightness-90 select-none relative after:absolute after:size-full ${props.className}`}
+      className={`rounded w-full h-full flex-1 text-2xl bg-stone-600 flex items-center justify-center cursor-pointer hover:brightness-125 transition-all duration-100 active:brightness-90 select-none relative after:absolute after:size-full ${props.className}`}
     >
       {props.children}
     </div>
