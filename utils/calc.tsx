@@ -1,6 +1,7 @@
 import { JSX } from "react";
 import Cursor from "@/components/cursor";
 import { clamp } from "./functions";
+import { multDivPad, nNumPad, nPowPad, powPad, sumSubPad, terms } from "./pads";
 
 export class Calc {
   private value: string = "||";
@@ -99,41 +100,38 @@ export class Calc {
 
   private getPriority(
     v: string,
+    config: {
+      parentheses?: boolean;
+      exp?: boolean;
+      pow?: boolean;
+      multDiv?: boolean;
+      sumSub?: boolean;
+    } = {
+      parentheses: true,
+      exp: true,
+      pow: true,
+      multDiv: true,
+      sumSub: true,
+    },
     start?: number
   ): [string, number, number, string] {
     // Parenteses
-    if (/\(.+\)/.test(v) && !/\(\-[0-9]+\)/.test(v)) {
-      const between = this.between(v, "(", ")");
-
-      const sub = this.getPriority(
-        between[0],
-        start ? start + between[1] + 1 : between[1] + 1
-      );
-
-      return [sub[0], sub[1], sub[2], sub[3]];
+    if (config.parentheses) {
+      const aux = this.getBetween(v);
+      if (aux[0] != "") {
+        return this.getPriority(
+          aux[0],
+          undefined,
+          start ? start + aux[1] + 1 : aux[1] + 1
+        );
+      }
     }
 
-    // Potencia
-    if (/\[.+\]/.test(v) && !/\[\(?\-?[0-9]+\)?\]/.test(v)) {
-      const between = this.between(v, "[", "]");
+    // Potência
+    if (config.pow && powPad.test(v)) {
+      const match: RegExpMatchArray = v.match(powPad) as RegExpMatchArray;
 
-      const sub = this.getPriority(
-        between[0],
-        start ? start + between[1] : between[1] + 1
-      );
-
-      return [sub[0], sub[1], sub[2], sub[3]];
-    } else if (/\(?\-?[0-9]+\)?\[\(?\-?[0-9]+\)?\]/.test(v)) {
-      let match: RegExpMatchArray;
-      if (/\(\-[0-9]+\)\[\(?\-?[0-9]+\)?\]/.test(v)) {
-        match = v.match(
-          /\((\-[0-9]+)\)\[\(?(\-?[0-9]+)\)?\]/
-        ) as RegExpMatchArray;
-      } else {
-        match = v.match(/([0-9]+)\[\(?(\-?[0-9]+)\)?\]/) as RegExpMatchArray;
-      }
-
-      const calc = match[1] + "^" + match[2];
+      const calc = (match[1] || match[2]) + "^" + match[3];
 
       const startI = start
         ? start + (match.index as number)
@@ -143,61 +141,81 @@ export class Calc {
       return [calc, startI, endI - 1, "^"];
     }
 
-    // Multiplicação e Divisão
-    if (/\(?\-?[0-9]+\)?[*/]\(?\-?[0-9]+\)?/.test(v)) {
-      const match = v.match(
-        /\(?(\-?[0-9]+)\)?([*/])\(?(\-?[0-9]+)\)?/
-      ) as RegExpMatchArray;
+    // Cálculos dentro do expoente
+    if (config.exp) {
+      const aux = this.getBetween(v, "exp");
+      if (aux[0] != "") {
+        return this.getPriority(
+          aux[0],
+          undefined,
+          start ? start + aux[1] : aux[1] + 1
+        );
+      }
+    }
 
-      const calc = match[1] + match[2] + match[3];
+    // Multiplicação e Divisão
+    if (config.multDiv && multDivPad.test(v)) {
+      const match = v.match(multDivPad) as RegExpMatchArray;
+
+      const calc = (match[1] || match[2]) + match[3] + (match[4] || match[5]);
 
       const startI = start || (match.index as number);
 
       const endI = startI + match[0].length;
 
-      return [calc, startI, endI - 1, match[2]];
+      return [calc, startI, endI - 1, match[3]];
     }
 
     // Adição e Subtração
-    if (/\(?\-?[0-9]+\)?[+-]\(?\-?[0-9]+\)?/.test(v)) {
-      const match = v.match(
-        /\(?(\-?[0-9]+)\)?([+-])\(?(\-?[0-9]+)\)?/
-      ) as RegExpMatchArray;
+    if (config.sumSub && sumSubPad.test(v)) {
+      const match = v.match(sumSubPad) as RegExpMatchArray;
 
-      const calc = match[1] + match[2] + match[3];
+      const calc = (match[1] || match[2]) + match[3] + (match[4] || match[5]);
 
       const startI = start || (match.index as number);
 
       const endI = startI + match[0].length;
 
-      return [calc, startI, endI - 1, match[2]];
+      return [calc, startI, endI - 1, match[3]];
     }
 
     return [v, 0, 0, ""];
   }
 
-  private between(
+  private getBetween(
     v: string,
-    start: string,
-    end: string = start
+    type: "par" | "exp" = "par"
   ): [string, number, number] {
-    let countOpen = 0;
-    let countClose = 0;
-    let i = v.indexOf(start);
-    let inside = "";
+    const cOpen = type == "par" ? "(" : "[";
+    const cClose = type == "par" ? ")" : "]";
 
-    do {
-      if (v[i] == start) countOpen++;
-      else if (v[i] == end) countClose++;
-      inside += v[i];
-      i++;
-    } while (countOpen != countClose);
+    const find: [string, number, number][] = [];
+    let opened = 0;
+    let closed = 0;
+    let start = 0;
+    let txt = "";
 
-    return [
-      inside.replace(new RegExp(`\\${start}(.*)\\${end}`), "$1"),
-      v.indexOf(start),
-      i - 1,
-    ];
+    v.split("").forEach((c, i) => {
+      if (c == cOpen) {
+        opened++;
+        if (opened == 1) start = i;
+      } else if (c == cClose) closed++;
+      else if (opened > 0) txt += c;
+
+      if (opened > 0 && opened == closed) {
+        find.push([txt, start, i]);
+        txt = "";
+        opened = 0;
+        closed = 0;
+      }
+    });
+
+    for (let i = 0; i < find.length; i++) {
+      if (!nNumPad.test(find[i][0]) && !nPowPad.test(find[i][0])) {
+        return find[i];
+      }
+    }
+    return ["", 0, 0];
   }
 
   private checkParentesis(v: string): boolean {
@@ -227,6 +245,78 @@ export class Calc {
     }
 
     return r;
+  }
+
+  private executeCalc(config?: {
+    parentheses?: boolean;
+    exp?: boolean;
+    pow?: boolean;
+    multDiv?: boolean;
+    sumSub?: boolean;
+  }) {
+    config = {
+      parentheses: true,
+      exp: true,
+      pow: true,
+      multDiv: true,
+      sumSub: true,
+      ...config,
+    };
+    let base = this.valueS();
+    const steps = [];
+
+    while (this.getPriority(base, config)[3] != "") {
+      const priority = this.getPriority(base, config);
+
+      const op = priority[3];
+      const [n1, n2] = priority[0].split(op).map((v) => Number(v));
+      let res;
+
+      if (op == "+") res = n1 + n2;
+      else if (op == "-") res = n1 - n2;
+      else if (op == "*") res = n1 * n2;
+      else if (op == "/") res = n1 / n2;
+      else if (op == "^") res = n1 ** n2;
+
+      steps.push([base, priority[0], res]);
+
+      base = (
+        base.slice(0, priority[1]) +
+        res +
+        base.slice(priority[2] + 1)
+      ).replaceAll(/\(([0-9]+)\)/g, "$1");
+    }
+
+    console.log(steps);
+
+    return base;
+  }
+
+  private organizeTherms(v: string) {
+    const parts = v.split("=");
+    const before = [...parts[0].matchAll(terms).map((m) => m[0])];
+    const after = [...parts[1].matchAll(terms).map((m) => m[0])];
+
+    const newBefore = [...before.filter((t) => /[xyz]/.test(t))];
+    const newAfter = [...after.filter((t) => !/[xyz]/.test(t))];
+
+    after.forEach((t) => {
+      if (/[xyz]/.test(t)) {
+        if (t[0] == "-") newBefore.push(`+${t.slice(1)}`);
+        else if (t[0] == "+") newBefore.push(`-${t.slice(1)}`);
+        else newBefore.push(`-${t}`);
+      }
+    });
+
+    before.forEach((t) => {
+      if (!/[xyz]/.test(t)) {
+        if (t[0] == "-") newAfter.push(`+${t.slice(1)}`);
+        else if (t[0] == "+") newAfter.push(`-${t.slice(1)}`);
+        else newAfter.push(`-${t}`);
+      }
+    });
+
+    console.log(v, "->", newBefore, newAfter);
   }
 
   rawValue(add?: string): string {
@@ -311,30 +401,39 @@ export class Calc {
 
   calc() {
     let r = "...";
-    if (this.checkParentesis(this.valueS())) {
-      let base = this.valueS();
+    const vS = this.valueS();
 
-      while (this.getPriority(base)[3] != "") {
-        const priority = this.getPriority(base);
-
-        const op = priority[3];
-        const [n1, n2] = priority[0].split(op).map((v) => Number(v));
-        let res;
-
-        if (op == "+") res = n1 + n2;
-        else if (op == "-") res = n1 - n2;
-        else if (op == "*") res = n1 * n2;
-        else if (op == "/") res = n1 / n2;
-        else if (op == "^") res = n1 ** n2;
-
-        base = (
-          base.slice(0, priority[1]) +
-          res +
-          base.slice(priority[2] + 1)
-        ).replaceAll(/\(([0-9]+)\)/g, "$1");
+    if (this.checkParentesis(vS)) {
+      if (!/[xyz=]/.test(vS)) {
+        // Contas básicas
+        r = this.executeCalc();
+      } else {
+        const aux = this.executeCalc({
+          pow: false,
+          sumSub: false,
+          multDiv: false,
+        });
+        if (
+          /[xyz]/.test(aux) &&
+          /=/.test(aux) &&
+          !/[xyz]\[(?:[2-9]|(?:[1-9][0-9]+))\]/.test(aux)
+        ) {
+          // Equação de 1° grau
+          console.log("Equação 1");
+          this.organizeTherms(aux);
+        } else if (
+          /[xyz]/.test(aux) &&
+          /=/.test(aux) &&
+          !/[xyz]\[(?:[3-9]|(?:[1-9][0-9]+))\]/.test(aux) &&
+          /-?(?:[1-9]|(?:[1-9][0-9]+))[xyz]\[2\]/.test(aux)
+        ) {
+          // Equação de 2° grau
+          console.log("Equação 2");
+          this.organizeTherms(aux);
+        } else if (/[xyz]/.test(aux) && !/=/.test(aux)) {
+          console.log("Polinômio");
+        }
       }
-
-      r = base;
     }
     this.answer = r;
   }
